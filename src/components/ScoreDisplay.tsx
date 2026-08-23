@@ -12,15 +12,15 @@ export default function ScoreDisplay({ gameState }: ScoreDisplayProps) {
   const remaining = MAX_ATTEMPTS - gameState.attempts;
 
   return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-800/50 border border-slate-700/50 px-5 py-3">
-      <div className="flex items-center gap-6">
+    <div className="flex items-center justify-between rounded-2xl bg-zinc-800/50 border border-zinc-700/40 px-5 py-3">
+      <div className="flex items-center gap-5">
         {/* Potential score */}
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Potential Score</p>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500">Score</p>
+          <p className="text-xl font-extrabold text-white">
             {gameState.completed ? (
               gameState.won ? (
-                <span className="text-green-400">{gameState.score}</span>
+                <span className="text-emerald-400">{gameState.score}</span>
               ) : (
                 <span className="text-red-400">0</span>
               )
@@ -31,9 +31,9 @@ export default function ScoreDisplay({ gameState }: ScoreDisplayProps) {
         </div>
 
         {/* Clip duration */}
-        <div className="border-l border-slate-700 pl-6">
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Clip Length</p>
-          <p className="text-2xl font-bold text-blue-400">
+        <div className="border-l border-zinc-700/50 pl-5">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500">Clip</p>
+          <p className="text-xl font-extrabold text-indigo-400">
             {clipDuration}s
           </p>
         </div>
@@ -41,15 +41,15 @@ export default function ScoreDisplay({ gameState }: ScoreDisplayProps) {
 
       {/* Attempts remaining */}
       <div className="text-right">
-        <p className="text-xs text-slate-500 uppercase tracking-wider">Guesses Left</p>
-        <div className="flex gap-1.5 mt-1">
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500">Guesses</p>
+        <div className="flex gap-1.5 mt-1.5">
           {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
             <div
               key={i}
-              className={`h-3 w-3 rounded-full transition-all ${
+              className={`h-2.5 w-2.5 rounded-full transition-all ${
                 i < gameState.attempts
-                  ? "bg-red-500"
-                  : "bg-slate-600"
+                  ? "bg-rose-500"
+                  : "bg-zinc-600"
               }`}
             />
           ))}

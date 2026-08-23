@@ -98,7 +98,7 @@ export default function GuessInput({ onGuess, disabled, placeholder }: GuessInpu
     <div className="relative w-full" ref={dropdownRef}>
       <div className="relative">
         <svg
-          className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
+          className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -121,7 +121,7 @@ export default function GuessInput({ onGuess, disabled, placeholder }: GuessInpu
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder || "Type a song or artist name..."}
-          className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-4 pl-12 pr-4 text-lg text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50"
+          className="w-full rounded-xl border border-zinc-700 bg-zinc-800/70 py-3.5 pl-11 pr-4 text-base text-white placeholder-zinc-500 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
           autoComplete="off"
         />
         {query && (
@@ -132,7 +132,7 @@ export default function GuessInput({ onGuess, disabled, placeholder }: GuessInpu
               setIsOpen(false);
               inputRef.current?.focus();
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-sm"
           >
             ✕
           </button>
@@ -141,26 +141,26 @@ export default function GuessInput({ onGuess, disabled, placeholder }: GuessInpu
 
       {/* Autocomplete dropdown */}
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
+        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 shadow-2xl">
           {results.map((song, index) => (
             <button
               key={song.id}
               onClick={() => handleSelect(song)}
               onMouseEnter={() => setHighlightedIndex(index)}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+              className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                 index === highlightedIndex
-                  ? "bg-blue-500/20 text-white"
-                  : "text-slate-300 hover:bg-slate-700/50"
+                  ? "bg-indigo-500/15 text-white"
+                  : "text-zinc-300 hover:bg-zinc-700/50"
               }`}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-700">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-700/60">
                 <span className="text-sm">🎵</span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-white">{song.title}</p>
-                <p className="truncate text-sm text-slate-400">{song.artist}</p>
+                <p className="truncate text-sm font-medium text-white">{song.title}</p>
+                <p className="truncate text-xs text-zinc-400">{song.artist}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-slate-700 px-2 py-1 text-xs text-slate-400">
+              <span className="shrink-0 rounded-full bg-zinc-700/60 px-2 py-0.5 text-[10px] text-zinc-400">
                 {song.decade}
               </span>
             </button>

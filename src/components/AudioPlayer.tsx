@@ -131,21 +131,25 @@ export default function AudioPlayer({ gameState }: AudioPlayerProps) {
         <button
           onClick={isPlaying ? handleStop : handlePlay}
           disabled={loading || !previewUrl}
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-400 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition-all active:scale-90 disabled:opacity-40 disabled:hover:scale-100 ${
+            isPlaying
+              ? "bg-rose-500 shadow-rose-500/30 hover:bg-rose-400"
+              : "bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-500"
+          }`}
           aria-label={isPlaying ? "Stop playback" : "Play clip"}
         >
           {loading ? (
-            <svg className="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           ) : isPlaying ? (
-            <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
               <rect x="6" y="4" width="4" height="16" rx="1" />
               <rect x="14" y="4" width="4" height="16" rx="1" />
             </svg>
           ) : (
-            <svg className="ml-1 h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="ml-0.5 h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           )}
@@ -153,23 +157,23 @@ export default function AudioPlayer({ gameState }: AudioPlayerProps) {
 
         <div className="flex-1">
           {/* Progress bar */}
-          <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-700/50">
+          <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-zinc-700/50">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-100"
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-400 transition-all duration-100"
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
             {/* Tier markers */}
             {Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
-                className="absolute top-0 h-full w-px bg-slate-500/30"
+                className="absolute top-0 h-full w-px bg-zinc-600/30"
                 style={{ left: `${(i / 6) * 100}%` }}
               />
             ))}
           </div>
 
           {/* Time labels */}
-          <div className="mt-2 flex justify-between text-xs text-slate-400">
+          <div className="mt-1.5 flex justify-between text-[10px] text-zinc-500">
             <span>{clipDuration}s clip</span>
             <span className="font-mono">
               {currentTime.toFixed(1)}s / {totalDuration > 0 ? `${totalDuration.toFixed(0)}s` : "..."}
@@ -179,32 +183,32 @@ export default function AudioPlayer({ gameState }: AudioPlayerProps) {
       </div>
 
       {loading && (
-        <p className="mt-2 text-center text-xs text-slate-500">Loading audio…</p>
+        <p className="mt-2 text-center text-[10px] text-zinc-500">Loading audio…</p>
       )}
 
       {!loading && !previewUrl && (
-        <p className="mt-2 text-center text-xs text-red-400">
+        <p className="mt-2 text-center text-[10px] text-red-400">
           Could not load preview — try another song
         </p>
       )}
 
       {/* Tier indicator */}
-      <div className="mt-4 flex items-center gap-1">
+      <div className="mt-3 flex items-center gap-1">
         {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
-            className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
               i < gameState.tier
-                ? "bg-red-500/60"
+                ? "bg-rose-500/60"
                 : i === gameState.tier
-                  ? "bg-blue-500"
-                  : "bg-slate-700/50"
+                  ? "bg-indigo-500"
+                  : "bg-zinc-700/50"
             }`}
           />
         ))}
       </div>
-      <p className="mt-1 text-center text-xs text-slate-500">
-        Tier {gameState.tier + 1} of 7 — hearing {clipDuration}s of audio
+      <p className="mt-1 text-center text-[10px] text-zinc-500">
+        Tier {gameState.tier + 1} of 7 — {clipDuration}s of audio
       </p>
     </div>
   );

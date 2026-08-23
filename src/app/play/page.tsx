@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getRandomSong, getDailySong, type Song } from "@/lib/songs";
+import { getRandomSong, getDailySong, type Song, type SongCategory } from "@/lib/songs";
 import {
   createGameState,
   makeGuess,
+  skipSong,
   type GameState,
   getCurrentClipDuration,
 } from "@/lib/game-engine";
@@ -21,24 +22,30 @@ function PlayGame() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") === "daily" ? "daily" : "freeplay";
+  const category = (searchParams.get("category") as SongCategory) || "all";
+  const gameKey = searchParams.get("gameKey");
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [revealAlbum, setRevealAlbum] = useState(false);
+  const hasInitialized = useRef(false);
 
-  // Initialize game
+  // Initialize game - use ref to prevent double init in strict mode
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     if (mode === "daily" && isDailyCompletedToday()) {
       router.push("/results");
       return;
     }
 
-    const song: Song = mode === "daily" ? getDailySong() : getRandomSong();
-    setGameState(createGameState(song, mode));
+    const song: Song = mode === "daily" ? getDailySong() : getRandomSong(category === "all" ? undefined : category);
+    setGameState(createGameState(song, mode, category));
     setShowAnswer(false);
     setRevealAlbum(false);
-  }, [mode, router]);
+  }, [mode, category, router, gameKey]);
 
   const handleGuess = useCallback(
     (guessText: string) => {
@@ -67,12 +74,22 @@ function PlayGame() {
     [gameState, mode],
   );
 
+  const handleSkip = useCallback(() => {
+    if (!gameState || gameState.completed) return;
+    const newState = skipSong(gameState);
+    setGameState(newState);
+    setShowAnswer(true);
+    setRevealAlbum(true);
+    addToLeaderboard(newState);
+    updateStats(newState);
+  }, [gameState]);
+
   if (!gameState) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 text-4xl animate-pulse">🎵</div>
-          <p className="text-slate-400">Loading song...</p>
+          <div className="mb-4 text-4xl animate-pulse">🎶</div>
+          <p className="text-zinc-400">Loading song...</p>
         </div>
       </div>
     );
@@ -80,50 +97,52 @@ function PlayGame() {
 
   const clipDuration = getCurrentClipDuration(gameState);
 
+  // Build a random key so Play Again actually remounts with a new song
+  const playAgainUrl = category && category !== "all"
+    ? `/play?mode=freeplay&category=${category}&gameKey=${Date.now()}`
+    : `/play?mode=freeplay&gameKey=${Date.now()}`;
+
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 py-8 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen flex-col items-center px-4 py-6 sm:px-6">
       <Confetti trigger={gameState.won} />
 
       {/* Header */}
-      <div className="mb-8 flex w-full max-w-2xl items-center justify-between">
+      <div className="mb-6 flex w-full max-w-xl items-center justify-between">
         <Link
           href="/"
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-white transition-colors"
         >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Home
+          ← Back
         </Link>
-        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
-          {mode === "daily" ? "📅 Daily Challenge" : "🎲 Free Play"}
+        <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-medium text-zinc-400">
+          {mode === "daily" ? "📅 Daily" : category !== "all" ? `🎵 ${category.toUpperCase()}` : "🎲 Free Play"}
         </span>
         <Link
           href="/leaderboard"
-          className="text-sm text-slate-400 hover:text-white transition-colors"
+          className="text-xs font-medium text-zinc-500 hover:text-white transition-colors"
         >
           🏆
         </Link>
       </div>
 
       {/* Main game area */}
-      <div className={`w-full max-w-2xl space-y-6 ${shaking ? "animate-shake" : ""}`}>
+      <div className={`w-full max-w-xl space-y-5 ${shaking ? "animate-shake" : ""}`}>
         <ScoreDisplay gameState={gameState} />
 
-        {/* Album art (blurred until revealed) */}
+        {/* Album art placeholder (blurred until revealed) */}
         <div className="flex justify-center">
           <div
-            className={`relative h-48 w-48 overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800 transition-all duration-500 ${
+            className={`relative h-40 w-40 overflow-hidden rounded-2xl border border-zinc-700/50 bg-zinc-800 transition-all duration-500 ${
               revealAlbum ? "animate-reveal" : "blur-xl grayscale"
             }`}
           >
             {revealAlbum ? (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-                <span className="text-6xl">🎵</span>
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500/20 to-rose-500/20">
+                <span className="text-5xl">🎶</span>
               </div>
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-slate-700/50">
-                <span className="text-5xl opacity-30">🔒</span>
+              <div className="flex h-full w-full items-center justify-center bg-zinc-700/50">
+                <span className="text-4xl opacity-30">🔒</span>
               </div>
             )}
           </div>
@@ -131,28 +150,25 @@ function PlayGame() {
 
         {/* Song reveal */}
         {showAnswer && (
-          <div className="animate-slide-up rounded-xl border border-blue-500/30 bg-blue-500/10 p-6 text-center">
-            <p className="text-sm text-blue-400 mb-1">
-              {gameState.won ? "🎉 You got it!" : "The song was..."}
+          <div className="animate-slide-up rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-5 text-center">
+            <p className="text-xs font-medium text-indigo-400 mb-1">
+              {gameState.won ? "🎉 You got it!" : gameState.skipped ? "⏭ Skipped" : "The song was..."}
             </p>
-            <p className="text-2xl font-bold text-white">{gameState.song.title}</p>
-            <p className="text-lg text-slate-400">{gameState.song.artist}</p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="text-xl font-bold text-white">{gameState.song.title}</p>
+            <p className="text-base text-zinc-400">{gameState.song.artist}</p>
+            <p className="mt-1 text-xs text-zinc-500">
               {gameState.song.genre} • {gameState.song.decade}
             </p>
             {gameState.won && (
-              <p className="mt-3 text-3xl font-bold text-green-400">
+              <p className="mt-2 text-2xl font-bold text-emerald-400">
                 +{gameState.score} pts
               </p>
             )}
-            <a
-              href={`https://open.spotify.com/search/${encodeURIComponent(gameState.song.title + " " + gameState.song.artist)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-400 hover:bg-green-500/30 transition-colors"
-            >
-              🎧 Listen on Spotify
-            </a>
+            {gameState.skipped && (
+              <p className="mt-2 text-sm text-zinc-400">
+                No points earned
+              </p>
+            )}
           </div>
         )}
 
@@ -169,9 +185,19 @@ function PlayGame() {
             <GuessInput
               onGuess={handleGuess}
               disabled={gameState.completed}
-              placeholder={`Guess the song or artist... (hearing ${clipDuration}s)`}
+              placeholder={`Guess the song or artist... (${clipDuration}s clip)`}
             />
           </div>
+        )}
+
+        {/* Skip button */}
+        {!gameState.completed && (
+          <button
+            onClick={handleSkip}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 py-3 text-sm font-medium text-zinc-400 transition-all hover:bg-zinc-700/50 hover:text-zinc-300 active:scale-[0.98]"
+          >
+            ⏭ Skip This Song
+          </button>
         )}
 
         {/* Attempt history */}
@@ -187,14 +213,14 @@ function PlayGame() {
         {gameState.completed && (
           <div className="flex gap-3 animate-slide-up">
             <Link
-              href="/play?mode=freeplay"
-              className="flex-1 rounded-xl bg-blue-500 px-6 py-3 text-center font-semibold text-white hover:bg-blue-400 transition-colors"
+              href={playAgainUrl}
+              className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 text-center font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
             >
               Play Again
             </Link>
             <Link
               href="/results"
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-800/50 px-6 py-3 text-center font-semibold text-slate-300 hover:bg-slate-700/50 transition-colors"
+              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800/50 px-6 py-3 text-center font-bold text-zinc-300 hover:bg-zinc-700/50 transition-colors"
             >
               View Results
             </Link>
@@ -211,8 +237,8 @@ export default function PlayPage() {
       fallback={
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 text-4xl animate-pulse">🎵</div>
-            <p className="text-slate-400">Loading...</p>
+            <div className="mb-4 text-4xl animate-pulse">🎶</div>
+            <p className="text-zinc-400">Loading...</p>
           </div>
         </div>
       }

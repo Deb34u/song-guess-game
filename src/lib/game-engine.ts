@@ -1,8 +1,9 @@
-import { Song, normalizeString } from "./songs";
+import { Song, SongCategory, normalizeString } from "./songs";
 
 export const AUDIO_TIERS = [0.1, 0.5, 1.0, 2.0, 4.0, 8.0, 30.0] as const;
 export const TIER_SCORES = [1000, 750, 500, 250, 100, 25, 10] as const;
 export const MAX_ATTEMPTS = 6;
+export const SKIP_PENALTY = 200; // points lost when skipping
 
 export interface Guess {
   text: string;
@@ -17,10 +18,12 @@ export interface GameState {
   score: number;
   completed: boolean;
   won: boolean;
+  skipped: boolean;
   mode: "freeplay" | "daily";
+  category: SongCategory;
 }
 
-export function createGameState(song: Song, mode: "freeplay" | "daily" = "freeplay"): GameState {
+export function createGameState(song: Song, mode: "freeplay" | "daily" = "freeplay", category: SongCategory = "all"): GameState {
   return {
     song,
     tier: 0,
@@ -29,7 +32,9 @@ export function createGameState(song: Song, mode: "freeplay" | "daily" = "freepl
     score: 0,
     completed: false,
     won: false,
+    skipped: false,
     mode,
+    category,
   };
 }
 
@@ -41,10 +46,7 @@ export function makeGuess(state: GameState, guessText: string): GameState {
   const normalizedArtist = normalizeString(state.song.artist);
 
   const correct =
-    normalizedGuess === normalizedTitle ||
-    normalizedGuess === normalizedArtist ||
-    normalizedTitle.includes(normalizedGuess) ||
-    normalizedGuess.includes(normalizedTitle);
+    normalizedGuess === normalizedTitle || normalizedGuess === normalizedArtist || normalizedTitle.includes(normalizedGuess) || normalizedGuess.includes(normalizedTitle);
 
   const newGuess: Guess = {
     text: guessText,
@@ -75,6 +77,16 @@ export function makeGuess(state: GameState, guessText: string): GameState {
     score: completed ? 0 : 0,
     completed,
     won: false,
+  };
+}
+
+export function skipSong(state: GameState): GameState {
+  return {
+    ...state,
+    completed: true,
+    won: false,
+    skipped: true,
+    score: Math.max(0, (TIER_SCORES[state.tier] ?? 10) - SKIP_PENALTY),
   };
 }
 
