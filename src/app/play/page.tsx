@@ -31,12 +31,12 @@ function PlayGame() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [revealAlbum, setRevealAlbum] = useState(false);
-  const lastGameKeyRef = useRef<string | null>(null);
+  const lastGameKeyRef = useRef<string | undefined>(undefined);
 
   // Initialize game — reinitialize when gameKey changes (Play Again / Next Song)
   useEffect(() => {
-    if (lastGameKeyRef.current === gameKey) return;
-    lastGameKeyRef.current = gameKey;
+    if (lastGameKeyRef.current === gameKey && lastGameKeyRef.current !== undefined) return;
+    lastGameKeyRef.current = gameKey ?? null;
 
     if (mode === "daily" && isDailyCompletedToday()) {
       router.push("/results");
