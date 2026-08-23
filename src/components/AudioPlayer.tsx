@@ -2,16 +2,45 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getCurrentClipDuration, type GameState } from "@/lib/game-engine";
+import { fetchItunesPreview } from "@/lib/songs";
 
 interface AudioPlayerProps {
   gameState: GameState;
 }
 
 export default function AudioPlayer({ gameState }: AudioPlayerProps) {
-  const [elapsed, setElapsed] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
   const clipDuration = getCurrentClipDuration(gameState);
-  const trackId = gameState.song.previewUrl.match(/track\/([A-Za-z0-9]+)/)?.[1] ?? "";
+
+  // Fetch the iTunes MP3 preview URL when the song changes
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setPreviewUrl(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setTotalDuration(0);
+    clearTimer();
+
+    fetchItunesPreview(gameState.song.title, gameState.song.artist).then(
+      (url) => {
+        if (!cancelled) {
+          setPreviewUrl(url);
+          setLoading(false);
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState.song.title, gameState.song.artist]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -20,51 +49,144 @@ export default function AudioPlayer({ gameState }: AudioPlayerProps) {
     }
   }, []);
 
+  // Stop playback when tier changes (user made a guess)
   useEffect(() => {
     clearTimer();
-    setElapsed(0);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
   }, [gameState.tier, gameState.song.id, clearTimer]);
 
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
 
+  const handlePlay = () => {
+    if (!audioRef.current || !previewUrl) return;
+
+    // Reset and play from the start
+    audioRef.current.currentTime = 0;
+    audioRef.current.play();
+    setIsPlaying(true);
+    setCurrentTime(0);
+
+    // Auto-stop after clip duration
+    timerRef.current = setTimeout(() => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+        setCurrentTime(clipDuration);
+      }
+    }, clipDuration * 1000);
+  };
+
+  const handleStop = () => {
+    clearTimer();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    const time = audioRef.current.currentTime;
+    setCurrentTime(Math.min(time, clipDuration));
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setTotalDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    clearTimer();
+    setIsPlaying(false);
+  };
+
+  const progress = totalDuration > 0 ? (currentTime / clipDuration) * 100 : 0;
+
   return (
-    <div className="w-full space-y-3">
-      {/* Spotify embed player */}
-      <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/50">
-        <iframe
-          src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
-          width="100%"
-          height="152"
-          frameBorder="0"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"
-          title="Spotify player"
+    <div className="w-full">
+      {/* Hidden audio element — src is the direct iTunes MP3 */}
+      {previewUrl && (
+        <audio
+          ref={audioRef}
+          src={previewUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleEnded}
+          preload="auto"
         />
+      )}
+
+      {/* Play / Stop button + progress bar */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={isPlaying ? handleStop : handlePlay}
+          disabled={loading || !previewUrl}
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-400 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+          aria-label={isPlaying ? "Stop playback" : "Play clip"}
+        >
+          {loading ? (
+            <svg className="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : isPlaying ? (
+            <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="4" width="4" height="16" rx="1" />
+              <rect x="14" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg className="ml-1 h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        <div className="flex-1">
+          {/* Progress bar */}
+          <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-700/50">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-100"
+              style={{ width: `${Math.min(progress, 100)}%` }}
+            />
+            {/* Tier markers */}
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute top-0 h-full w-px bg-slate-500/30"
+                style={{ left: `${(i / 6) * 100}%` }}
+              />
+            ))}
+          </div>
+
+          {/* Time labels */}
+          <div className="mt-2 flex justify-between text-xs text-slate-400">
+            <span>{clipDuration}s clip</span>
+            <span className="font-mono">
+              {currentTime.toFixed(1)}s / {totalDuration > 0 ? `${totalDuration.toFixed(0)}s` : "..."}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Clip timer */}
-      <div>
-        {/* Progress bar */}
-        <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-700/50">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-100"
-            style={{ width: `${Math.min((elapsed / clipDuration) * 100, 100)}%` }}
-          />
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute top-0 h-full w-px bg-slate-500/30"
-              style={{ left: `${(i / 6) * 100}%` }}
-            />
-          ))}
-        </div>
-        <div className="mt-2 flex justify-between text-xs text-slate-400">
-          <span>{clipDuration}s clip</span>
-          <span className="font-mono">{elapsed.toFixed(1)}s / {clipDuration}s</span>
-        </div>
-      </div>
+      {loading && (
+        <p className="mt-2 text-center text-xs text-slate-500">Loading audio…</p>
+      )}
+
+      {!loading && !previewUrl && (
+        <p className="mt-2 text-center text-xs text-red-400">
+          Could not load preview — try another song
+        </p>
+      )}
 
       {/* Tier indicator */}
       <div className="mt-4 flex items-center gap-1">

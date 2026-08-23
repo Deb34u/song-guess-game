@@ -10,7 +10,54 @@ export interface Song {
   previewUrl: string;
 }
 
-// Helper to create Spotify embed/preview URLs
+// ── iTunes preview cache (localStorage) ──────────────────────────
+const PREVIEW_CACHE_KEY = "song-guess-itunes-preview-cache";
+
+function getPreviewCache(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(PREVIEW_CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function setPreviewCache(cache: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PREVIEW_CACHE_KEY, JSON.stringify(cache));
+  } catch { /* quota exceeded – ignore */ }
+}
+
+/**
+ * Fetch a 30-second MP3 preview URL from the iTunes Search API.
+ * Results are cached in localStorage so subsequent plays are instant.
+ * Returns null if no match is found.
+ */
+export async function fetchItunesPreview(
+  title: string,
+  artist: string,
+): Promise<string | null> {
+  const cacheKey = `${title}::${artist}`.toLowerCase();
+  const cache = getPreviewCache();
+  if (cache[cacheKey]) return cache[cacheKey];
+
+  try {
+    const term = encodeURIComponent(`${title} ${artist}`);
+    const res = await fetch(
+      `https://itunes.apple.com/search?term=${term}&limit=1&media=music`,
+    );
+    const data = await res.json();
+    const result = data.results?.[0];
+    if (result?.previewUrl) {
+      cache[cacheKey] = result.previewUrl;
+      setPreviewCache(cache);
+      return result.previewUrl;
+    }
+  } catch { /* network error – ignore */ }
+  return null;
+}
+
 function spotifyPreview(id: string): string {
   return `https://open.spotify.com/embed/track/${id}?utm_source=generator&theme=0`;
 }
