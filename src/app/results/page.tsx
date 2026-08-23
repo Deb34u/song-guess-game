@@ -157,9 +157,9 @@ export default function ResultsPage() {
           <Link
             href={`/play?mode=freeplay&gameKey=${Date.now()}`}
             className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 text-center font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
-          >
-            Play Again
-          </Link>
+            >
+              Play Another Song
+            </Link>
           <Link
             href="/"
             className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800/50 px-6 py-3 text-center font-bold text-zinc-300 hover:bg-zinc-700/50 transition-colors"

@@ -7,6 +7,8 @@ import {
   createGameState,
   makeGuess,
   skipSong,
+  advanceTier,
+  TIER_SCORES,
   type GameState,
   getCurrentClipDuration,
 } from "@/lib/game-engine";
@@ -29,12 +31,12 @@ function PlayGame() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [revealAlbum, setRevealAlbum] = useState(false);
-  const hasInitialized = useRef(false);
+  const lastGameKeyRef = useRef<string | null>(null);
 
-  // Initialize game - use ref to prevent double init in strict mode
+  // Initialize game — reinitialize when gameKey changes (Play Again / Next Song)
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (lastGameKeyRef.current === gameKey) return;
+    lastGameKeyRef.current = gameKey;
 
     if (mode === "daily" && isDailyCompletedToday()) {
       router.push("/results");
@@ -45,7 +47,7 @@ function PlayGame() {
     setGameState(createGameState(song, mode, category));
     setShowAnswer(false);
     setRevealAlbum(false);
-  }, [mode, category, router, gameKey]);
+  }, [gameKey, mode, category, router]);
 
   const handleGuess = useCallback(
     (guessText: string) => {
@@ -82,6 +84,12 @@ function PlayGame() {
     setRevealAlbum(true);
     addToLeaderboard(newState);
     updateStats(newState);
+  }, [gameState]);
+
+  const handleHearMore = useCallback(() => {
+    if (!gameState || gameState.completed) return;
+    const newState = advanceTier(gameState);
+    setGameState(newState);
   }, [gameState]);
 
   if (!gameState) {
@@ -190,6 +198,21 @@ function PlayGame() {
           </div>
         )}
 
+        {/* Hear More button */}
+        {!gameState.completed && gameState.tier < 6 && (() => {
+          const currentScore = TIER_SCORES[gameState.tier] ?? 10;
+          const nextScore = TIER_SCORES[gameState.tier + 1] ?? 10;
+          const cost = currentScore - nextScore;
+          return (
+            <button
+              onClick={handleHearMore}
+              className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 py-3 text-sm font-medium text-amber-400 transition-all hover:bg-amber-500/20 hover:text-amber-300 active:scale-[0.98]"
+            >
+              🔊 Hear More (−{cost} pts)
+            </button>
+          );
+        })()}
+
         {/* Skip button */}
         {!gameState.completed && (
           <button
@@ -216,7 +239,7 @@ function PlayGame() {
               href={playAgainUrl}
               className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 text-center font-bold text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
             >
-              Play Again
+              Next Song
             </Link>
             <Link
               href="/results"

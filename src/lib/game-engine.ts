@@ -90,6 +90,27 @@ export function skipSong(state: GameState): GameState {
   };
 }
 
+/**
+ * Advance to the next clip tier (hear more of the song) without using a guess attempt.
+ * Deducts a smaller penalty than skipping or guessing wrong.
+ */
+export function advanceTier(state: GameState): GameState {
+  if (state.completed) return state;
+
+  const newTier = state.tier + 1;
+  const tierCompleted = newTier >= AUDIO_TIERS.length;
+
+  if (tierCompleted) {
+    // Already at max tier — can't advance further
+    return state;
+  }
+
+  return {
+    ...state,
+    tier: newTier,
+  };
+}
+
 export function getCurrentClipDuration(state: GameState): number {
   return AUDIO_TIERS[state.tier] ?? 30;
 }
