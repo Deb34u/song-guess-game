@@ -31,7 +31,7 @@ function PlayGame() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [revealAlbum, setRevealAlbum] = useState(false);
-  const lastGameKeyRef = useRef<string | undefined>(undefined);
+  const lastGameKeyRef = useRef<string | null | undefined>(undefined);
 
   // Initialize game — reinitialize when gameKey changes (Play Again / Next Song)
   useEffect(() => {
